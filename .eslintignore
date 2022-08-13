@@ -1,0 +1,4 @@
+# Ignore build files
+build/*
+*.config.cjs
+*.json

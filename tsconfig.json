@@ -1,0 +1,31 @@
+{
+  "compileOnSave": true,
+  "compilerOptions": {
+    "lib": [
+      "ESNext",
+      "DOM"
+    ],
+    "allowSyntheticDefaultImports": true,
+    "alwaysStrict": true,
+    "declaration": true,
+    "esModuleInterop": true,
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "noImplicitAny": true,
+    "outDir": "build",
+    "removeComments": true,
+    "resolveJsonModule": true,
+    "rootDir": "source",
+    "sourceMap": true,
+    "watch": false
+  },
+  "include": [
+    "source"
+  ],
+  "exclude": [
+    "build",
+    "node_modules",
+    "source/**/*.test.*"
+  ]
+}
