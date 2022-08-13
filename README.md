@@ -1,15 +1,9 @@
-# 🚀 Welcome to your new awesome project!
+# ALUI: Basic User Interface For ALClient
 
-This project has been created using **webpack-cli**, you can now run
+### NOTE: THIS IS STILL A WORK IN PROGRESS
 
-```
-npm run build
-```
+## Description
+The goal of this package is to have a system where you can start your bots in [ALClient](https://github.com/earthiverse/ALClient) and then have a UI that shows you all pertinent information for each of your bots (without the overhead of drawing several unnecessary sprites and maps and tiles to the screen). The layout is very similar to NexusNull's [bot-web-interface](https://github.com/NexusNull/bot-web-interface); however, I decided to also use earthiverse's [algui](https://github.com/earthiverse/algui) for inspiration.
 
-or
-
-```
-yarn build
-```
-
-to bundle your application
+## Basic Usage
+*Coming Soon...™*
