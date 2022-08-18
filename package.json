@@ -1,6 +1,6 @@
 {
   "name": "alui",
-  "version": "0.0.1",
+  "version": "0.1.5",
   "description": "Basic UI for headless AdventureLand clients",
   "main": "build/alui/index.js",
   "files": [

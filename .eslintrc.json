@@ -65,6 +65,7 @@
                 "allowIndentationTabs": false
             }
         ],
+        "no-case-declarations": "off",
         "no-trailing-spaces": "error",
         "object-curly-spacing": [
             "error",
