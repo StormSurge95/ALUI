@@ -4,8 +4,10 @@ import { fileURLToPath } from "url"
 import Path, { dirname } from "path"
 import * as SocketIO from "socket.io"
 import { Socket } from "socket.io-client"
-import { BankInfo, Character, CharacterData, CharacterType, EntitiesData, NewMapData, WelcomeData } from "alclient"
+import { BankInfo, Character, CharacterData, CharacterType, EntitiesData, GData, NewMapData, WelcomeData } from "alclient"
 import { CharacterUIData, ClientToServerEvents, InventoryData, MapData, ServerData, ServerToClientEvents, UIData } from "../definitions/server"
+import axios from "axios"
+
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -17,7 +19,9 @@ let bankCache: BankInfo = undefined
 
 let io: SocketIO.Server<ClientToServerEvents, ServerToClientEvents>
 
-export function startServer(port = 8080) {
+export async function startServer(port = 8080) {
+
+    const G = await getGData()
 
     app.use(Express.static(clientFolder))
     server.listen(port, () => {
@@ -26,6 +30,7 @@ export function startServer(port = 8080) {
 
     io = new SocketIO.Server(server)
     io.on("connection", (connection) => {
+        connection.emit("data", G)
         for (const [id, data] of bots) connection.emit("addBot", id, data)
         if (bankCache) connection.emit("bank", bankCache)
     })
@@ -211,4 +216,16 @@ export function addBot(id: string, socket: Socket, character: Character) {
     })
 
     socket.emit("send_updates", {})
+}
+
+async function getGData(): Promise<GData> {
+    const response = await axios.get<string>("https://adventure.land/data.js")
+    if (response.status == 200) {
+        const matches = response.data.match(/var\s+G\s*=\s*(\{.+\});/)
+        const rawG = matches[1]
+        const G = JSON.parse(rawG) as GData
+        return Promise.resolve(G)
+    } else {
+        return Promise.reject(`${response}\nError fetching https://adventure.land/data.js`)
+    }
 }

@@ -1,14 +1,13 @@
 import * as SocketIO from "socket.io-client"
 import { CharacterUIData, ClientToServerEvents, InventoryData, MapData, ServerToClientEvents, UIData } from "../definitions/server"
 import "./index.css"
-import G from "../G.json"
 import { BankInfo, BankPackName, ConditionName, GData, ItemData, SlotInfo, SlotType, StatusInfo } from "alclient"
 
 const invDisplayed = new Map<string, boolean>()
-const statDisplayed = new Map<string, boolean>()
 let bankCache: BankInfo
 let currentPackNum = 0
 let currentTotalPacks = 0
+let G: GData = undefined
 
 const socket: SocketIO.Socket<ServerToClientEvents, ClientToServerEvents> = SocketIO.io({
     autoConnect: true,
@@ -26,6 +25,10 @@ document.body.appendChild(UIContainer)
 document.body.appendChild(bankContainer)
 if (!bankCache) bankContainer.textContent = "NO BANK DATA"
 else displayBank(bankCache, bankContainer)
+
+socket.on("data", (g: GData): void => {
+    G = g
+})
 
 socket.on("removeBot", (id: string): void => {
     const bot = document.getElementById(`${id}_BotUI`)
@@ -119,7 +122,7 @@ socket.on("addBot", (id: string, data: UIData): void => {
     const expBar = document.createElement("div")
     expBar.setAttribute("class", "xpbar")
     expBar.id = `${id}_XP`
-    const max_xp = (G as unknown as GData).levels[data.character.level]
+    const max_xp = G.levels[data.character.level]
     expBar.style.width = `${((data.character.xp / max_xp) * 100).toFixed(2)}%`
     const expText = document.createElement("div")
     expText.id = `${id}_XP_Info`
@@ -218,6 +221,10 @@ function displayConditions(data: StatusInfo, ele: HTMLElement): void {
     if ("typing" in data) {
         delete data.typing
     }
+    if ("penalty_cd" in data) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        console.log((data as any).penalty_cd)
+    }
     const conditions = Object.keys(data)
     const numConditions = conditions.length
     let row: HTMLElement
@@ -240,7 +247,7 @@ function displayConditions(data: StatusInfo, ele: HTMLElement): void {
         const pos = getConditionPos(cond)
         const src = getImgSrc(pos[0])
         img.src = src
-        const imgData = (G as unknown as GData).images[src.replace("./", "/")]
+        const imgData = G.images[src.replace("./", "/")]
         const width = imgData.width * 2
         const height = imgData.height * 2
         const offLeft = -(pos[1] * 40)
@@ -255,7 +262,11 @@ function displayConditions(data: StatusInfo, ele: HTMLElement): void {
         frame.appendChild(tooltip)
         const namerow = document.createElement("div")
         namerow.setAttribute("class", "smalltextdisplay")
-        namerow.textContent = (G as unknown as GData).conditions[cond].name
+        try {
+            namerow.textContent = G.conditions[cond].name
+        } catch {
+            namerow.textContent = cond as string
+        }
         tooltip.appendChild(namerow)
         const conData = data[cond]
         if ("f" in conData) {
@@ -290,9 +301,14 @@ function displayConditions(data: StatusInfo, ele: HTMLElement): void {
 }
 
 function getConditionPos(cond: ConditionName): [string, number, number] {
-    const data = (G as unknown as GData).conditions[cond]
-    const skin = (data.skin == "condition_positive") ? "condition_good" : ((data.skin == "condition_negative") ? "condition_bad" : data.skin)
-    return (G as unknown as GData).positions[skin] as [string, number, number]
+    try {
+        const data = G.conditions[cond]
+        const skin = (data.skin == "condition_positive") ? "condition_good" : ((data.skin == "condition_negative") ? "condition_bad" : data.skin)
+        return G.positions[skin] as [string, number, number]
+    } catch {
+        console.log(`ConditionName: ${cond}`)
+        return G.positions["placeholder"] as [string, number, number]
+    }
 }
 
 function invButtonClick(id: string, data: InventoryData): void {
@@ -334,7 +350,7 @@ socket.on("character", (id: string, data: CharacterUIData): void => {
     mpBarInfoEle.textContent = `${data.mp.toLocaleString("en-US")} / ${data.max_mp.toLocaleString("en-US")} (${mpBarEle.style.width})`
 
     const xpBarEle = document.getElementById(`${id}_XP`)
-    const max_xp = (G as unknown as GData).levels[data.level]
+    const max_xp = G.levels[data.level]
     xpBarEle.style.width = `${((data.xp / max_xp) * 100).toFixed(2)}%`
 
     const xpBarInfoEle = document.getElementById(`${id}_XP_Info`)
@@ -570,12 +586,12 @@ function displayEquipment(slots: SlotInfo, ele: HTMLElement): void {
 }
 
 function displayItem(item: ItemData, ele: HTMLElement, equip = false): void {
-    const itemSkin = (G as unknown as GData).items[item.name].skin
-    const itemPos = (G as unknown as GData).positions[itemSkin] as [string, number, number]
+    const itemSkin = G.items[item.name].skin
+    const itemPos = G.positions[itemSkin] as [string, number, number]
     const itemFile = getImgSrc(itemPos[0])
     const img = document.createElement("img")
     img.setAttribute("src", itemFile)
-    const imgData = (G as unknown as GData).images[itemFile.replace("./", "/")]
+    const imgData = G.images[itemFile.replace("./", "/")]
     const width = imgData.width * 2
     const height = imgData.height * 2
     const itemLeft = -(itemPos[1] * 40)
@@ -618,10 +634,15 @@ function displayItem(item: ItemData, ele: HTMLElement, equip = false): void {
 }
 
 function getName(item: ItemData): string {
-    const name = (G as unknown as GData).items[item.name].name
+    const name = G.items[item.name].name
     let fixedName = name
-    if (item.p) fixedName = (item.p as string) + " " + fixedName
-    if (item.level && item.level > 0) fixedName = fixedName + " +" + item.level.toString(10)
+    if (item.p) {
+        const pstr = item.p[0].toUpperCase() + item.p.substring(1)
+        fixedName = pstr + " " + fixedName
+    }
+    if (item.level && item.level > 0) {
+        fixedName = fixedName + " +" + item.level.toString(10)
+    }
     return fixedName
 }
 
