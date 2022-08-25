@@ -42,14 +42,22 @@ export function addBot(id: string, socket: Socket, character: Character) {
             character: {
                 ctype: character.ctype,
                 cx: character.cx,
+                going_x: character.going_x,
+                going_y: character.going_y,
                 hp: character.hp,
+                id: character.id,
                 level: character.level,
                 max_hp: character.max_hp,
                 max_mp: character.max_mp,
+                moving: character.moving,
                 mp: character.mp,
                 rip: character.rip,
                 s: character.s,
+                skin: character.skin,
+                speed: character.speed,
+                x: character.x,
                 xp: character.xp,
+                y: character.y
             },
             inventory: {
                 equipment: character.slots,
@@ -71,10 +79,6 @@ export function addBot(id: string, socket: Socket, character: Character) {
     }
     socket.onAny((eventName, args) => {
         switch (eventName) {
-            case "disconnect": {
-                io.emit("removeBot", id)
-                break
-            }
             case "entities": {
                 const data = args as EntitiesData
                 for (const player of data.players) {
@@ -84,19 +88,27 @@ export function addBot(id: string, socket: Socket, character: Character) {
                         const charData: CharacterUIData = {
                             ctype: player.ctype as CharacterType,
                             cx: player.cx,
+                            going_x: player.going_x,
+                            going_y: player.going_y,
                             hp: player.hp,
+                            id: player.id,
                             level: player.level,
                             max_hp: player.max_hp,
                             max_mp: player.max_mp,
+                            moving: player.moving,
                             mp: player.mp,
                             rip: player.rip as boolean,
                             s: player.s,
+                            skin: player.skin,
+                            speed: player.speed,
+                            x: player.x,
                             xp: player.xp,
+                            y: player.y
                         }
                         // Update bot cache
                         botData.character = charData
                         // Update bot display
-                        io.emit("character", id, charData)
+                        io.emit("player", id, charData)
 
                         // create updated map data
                         const mapData: MapData = {
@@ -122,6 +134,8 @@ export function addBot(id: string, socket: Socket, character: Character) {
                         io.emit("server", id, botData.server)
 
                         bots.set(id, botData)
+                    } else {
+                        //
                     }
                 }
                 break
@@ -135,17 +149,25 @@ export function addBot(id: string, socket: Socket, character: Character) {
                 const charData: CharacterUIData = {
                     ctype: data.ctype,
                     cx: data.cx,
+                    going_x: data.going_x,
+                    going_y: data.going_y,
                     hp: data.hp,
+                    id: data.id,
                     level: data.level,
                     max_hp: data.max_hp,
                     max_mp: data.max_mp,
+                    moving: data.moving,
                     mp: data.mp,
                     rip: data.rip,
                     s: data.s,
+                    skin: data.skin,
+                    speed: data.speed,
+                    x: data.x,
                     xp: data.xp,
+                    y: data.y
                 }
                 botData.character = charData
-                io.emit("character", id, charData)
+                io.emit("player", id, charData)
 
                 const invData: InventoryData = {
                     equipment: data.slots,

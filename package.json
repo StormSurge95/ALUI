@@ -10,24 +10,30 @@
     ],
     "type": "module",
     "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
         "build": "webpack && tsc && copyfiles --up 1 source/definitions/*.d.ts build",
         "clean": "rimraf build/*",
-        "prepare": "npm run clean && npm run build",
-        "test": "echo \"Error: no test specified\" && exit 1"
+        "updateReqs": "npm i @pixi/layers@latest @types/express@latest axios@latest express@latest pixi-viewport@latest pixi.js@latest socket.io@latest socket.io-client@latest",
+        "updateDevs": "npm i --save-dev @typescript-eslint/eslint-plugin@latest @typescript-eslint/parser@latest alclient@latest copy-webpack-plugin@latest copyfiles@latest css-loader@latest eslint@latest file-loader@latest html-inline-css-webpack-plugin@latest html-webpack-plugin@latest mini-css-extract-plugin@latest rimraf@latest ts-loader@latest typescript@latest url-loader@latest webpack@latest webpack-cdn-plugin@latest webpack-cli@latest webpack-dev-server@latest",
+        "update": "npm run updateReqs && npm run updateDevs",
+        "prepare": "npm run update && npm run clean && npm run build"
     },
     "author": "Storm Cassidy",
     "license": "GPL-3.0-or-later",
     "dependencies": {
+        "@pixi/layers": "^1.0.11",
         "@types/express": "^4.17.13",
         "axios": "^0.27.2",
         "express": "^4.18.1",
+        "pixi-viewport": "^4.35.0",
+        "pixi.js": "^6.5.1",
         "socket.io": "^4.5.1",
         "socket.io-client": "^4.5.1"
     },
     "devDependencies": {
-        "@typescript-eslint/eslint-plugin": "^5.33.1",
-        "@typescript-eslint/parser": "^5.33.1",
-        "alclient": "^0.15.11",
+        "@typescript-eslint/eslint-plugin": "^5.34.0",
+        "@typescript-eslint/parser": "^5.34.0",
+        "alclient": "^0.15.16",
         "copy-webpack-plugin": "^11.0.0",
         "copyfiles": "^2.4.1",
         "css-loader": "^6.7.1",

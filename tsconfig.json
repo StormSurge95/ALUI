@@ -11,7 +11,7 @@
         "target": "ESNext",
         "module": "ESNext",
         "moduleResolution": "Node",
-        "noImplicitAny": true,
+        "noImplicitAny": false,
         "outDir": "build",
         "removeComments": true,
         "resolveJsonModule": true,

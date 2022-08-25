@@ -2,12 +2,25 @@ import * as SocketIO from "socket.io-client"
 import { CharacterUIData, ClientToServerEvents, InventoryData, MapData, ServerToClientEvents, UIData } from "../definitions/server"
 import "./index.css"
 import { BankInfo, BankPackName, ConditionName, GData, ItemData, SlotInfo, SlotType, StatusInfo } from "alclient"
+import { PRECISION, SCALE_MODES, settings } from "pixi.js"
+import { TextureManager } from "./texture"
+import { MapManager } from "./map"
+import { SpriteManager } from "./sprite"
+import { ProjectileManager } from "./projectile"
 
 const invDisplayed = new Map<string, boolean>()
 let bankCache: BankInfo
 let currentPackNum = 0
 let currentTotalPacks = 0
+let tm: TextureManager
+let mm: MapManager
+let sm: SpriteManager
+let pm: ProjectileManager
 let G: GData = undefined
+
+settings.ROUND_PIXELS = true
+settings.SCALE_MODE = SCALE_MODES.NEAREST
+settings.PRECISION_FRAGMENT = PRECISION.LOW
 
 const socket: SocketIO.Socket<ServerToClientEvents, ClientToServerEvents> = SocketIO.io({
     autoConnect: true,
@@ -28,6 +41,12 @@ else displayBank(bankCache, bankContainer)
 
 socket.on("data", (g: GData): void => {
     G = g
+    if (tm === undefined) {
+        tm = new TextureManager(g)
+        mm = new MapManager(tm, g.geometry)
+        sm = new SpriteManager(tm, g)
+        pm = new ProjectileManager(tm, g)
+    }
 })
 
 socket.on("removeBot", (id: string): void => {
@@ -214,16 +233,72 @@ socket.on("addBot", (id: string, data: UIData): void => {
     UIContainer.appendChild(botWindow)
 })
 
+socket.on("player", (id: string, data: CharacterUIData): void => {
+    const classEle = document.getElementById(`${id}_Class`)
+    classEle.textContent = `Class: ${data.ctype}`
+
+    const levelEle = document.getElementById(`${id}_Level`)
+    levelEle.textContent = `Level: ${data.level}`
+
+    const hpBarEle = document.getElementById(`${id}_HP`)
+    hpBarEle.style.width = `${((data.hp / data.max_hp) * 100).toFixed(2)}%`
+
+    const hpBarInfoEle = document.getElementById(`${id}_HP_Info`)
+    hpBarInfoEle.textContent = `${data.hp.toLocaleString("en-US")} / ${data.max_hp.toLocaleString("en-US")} (${hpBarEle.style.width})`
+
+    const mpBarEle = document.getElementById(`${id}_MP`)
+    mpBarEle.style.width = `${((data.mp / data.max_mp) * 100).toFixed(2)}%`
+
+    const mpBarInfoEle = document.getElementById(`${id}_MP_Info`)
+    mpBarInfoEle.textContent = `${data.mp.toLocaleString("en-US")} / ${data.max_mp.toLocaleString("en-US")} (${mpBarEle.style.width})`
+
+    const xpBarEle = document.getElementById(`${id}_XP`)
+    const max_xp = G.levels[data.level]
+    xpBarEle.style.width = `${((data.xp / max_xp) * 100).toFixed(2)}%`
+
+    const xpBarInfoEle = document.getElementById(`${id}_XP_Info`)
+    xpBarInfoEle.textContent = `${data.xp.toLocaleString("en-US")} / ${max_xp.toLocaleString("en-US")} (${xpBarEle.style.width})`
+
+    const statusInfoEle = document.getElementById(`${id}_statuscontent`)
+    while (statusInfoEle.childElementCount > 0) {
+        statusInfoEle.removeChild(statusInfoEle.children[0])
+    }
+    displayConditions(data.s, statusInfoEle)
+})
+
+socket.on("map", (id: string, data: MapData): void => {
+    const mapEle = document.getElementById(`${id}_Map`)
+    mapEle.textContent = `Map: { ${data.map}: ${data.x.toFixed(2)}, ${data.y.toFixed(2)} }`
+})
+
+socket.on("inventory", (id: string, data: InventoryData): void => {
+    const goldEle = document.getElementById(`${id}_Gold`)
+    goldEle.textContent = data.gold.toLocaleString("en-US")
+
+    if (invDisplayed.get(id)) {
+        updateEquipment(data.equipment)
+        updateInventory(data.items)
+    } else {
+        const invButton = document.getElementById(`${id}_Inv`)
+        invButton.onclick = () => {
+            invButtonClick(id, data)
+        }
+    }
+})
+
+socket.on("bank", (data: BankInfo): void => {
+    bankCache = data
+    currentTotalPacks = Object.keys(data).length - 1
+    const cont = document.getElementById("bankUIContainer")
+    displayBank(data, cont)
+})
+
 function displayConditions(data: StatusInfo, ele: HTMLElement): void {
     const statCont = document.createElement("div")
     statCont.setAttribute("class", "statContainer")
     ele.appendChild(statCont)
     if ("typing" in data) {
         delete data.typing
-    }
-    if ("penalty_cd" in data) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        console.log((data as any).penalty_cd)
     }
     const conditions = Object.keys(data)
     const numConditions = conditions.length
@@ -329,66 +404,6 @@ function invButtonClick(id: string, data: InventoryData): void {
     displayInventory(data.items, imodal)
     document.body.appendChild(modal)
 }
-
-socket.on("character", (id: string, data: CharacterUIData): void => {
-    const classEle = document.getElementById(`${id}_Class`)
-    classEle.textContent = `Class: ${data.ctype}`
-
-    const levelEle = document.getElementById(`${id}_Level`)
-    levelEle.textContent = `Level: ${data.level}`
-
-    const hpBarEle = document.getElementById(`${id}_HP`)
-    hpBarEle.style.width = `${((data.hp / data.max_hp) * 100).toFixed(2)}%`
-
-    const hpBarInfoEle = document.getElementById(`${id}_HP_Info`)
-    hpBarInfoEle.textContent = `${data.hp.toLocaleString("en-US")} / ${data.max_hp.toLocaleString("en-US")} (${hpBarEle.style.width})`
-
-    const mpBarEle = document.getElementById(`${id}_MP`)
-    mpBarEle.style.width = `${((data.mp / data.max_mp) * 100).toFixed(2)}%`
-
-    const mpBarInfoEle = document.getElementById(`${id}_MP_Info`)
-    mpBarInfoEle.textContent = `${data.mp.toLocaleString("en-US")} / ${data.max_mp.toLocaleString("en-US")} (${mpBarEle.style.width})`
-
-    const xpBarEle = document.getElementById(`${id}_XP`)
-    const max_xp = G.levels[data.level]
-    xpBarEle.style.width = `${((data.xp / max_xp) * 100).toFixed(2)}%`
-
-    const xpBarInfoEle = document.getElementById(`${id}_XP_Info`)
-    xpBarInfoEle.textContent = `${data.xp.toLocaleString("en-US")} / ${max_xp.toLocaleString("en-US")} (${xpBarEle.style.width})`
-
-    const statusInfoEle = document.getElementById(`${id}_statuscontent`)
-    while (statusInfoEle.childElementCount > 0) {
-        statusInfoEle.removeChild(statusInfoEle.children[0])
-    }
-    displayConditions(data.s, statusInfoEle)
-})
-
-socket.on("map", (id: string, data: MapData): void => {
-    const mapEle = document.getElementById(`${id}_Map`)
-    mapEle.textContent = `Map: { ${data.map}: ${data.x.toFixed(2)}, ${data.y.toFixed(2)} }`
-})
-
-socket.on("inventory", (id: string, data: InventoryData): void => {
-    const goldEle = document.getElementById(`${id}_Gold`)
-    goldEle.textContent = data.gold.toLocaleString("en-US")
-
-    if (invDisplayed.get(id)) {
-        updateEquipment(data.equipment)
-        updateInventory(data.items)
-    } else {
-        const invButton = document.getElementById(`${id}_Inv`)
-        invButton.onclick = () => {
-            invButtonClick(id, data)
-        }
-    }
-})
-
-socket.on("bank", (data: BankInfo): void => {
-    bankCache = data
-    currentTotalPacks = Object.keys(data).length - 1
-    const cont = document.getElementById("bankUIContainer")
-    displayBank(data, cont)
-})
 
 function getImgSrc(file: string): string {
     if (file == "") {

@@ -1,4 +1,4 @@
-import { BankInfo, CharacterType, CXData, GData, ItemData, MapName, ServerIdentifier, ServerRegion, SlotInfo, StatusInfo } from "alclient"
+import { BankInfo, CharacterType, CXData, GData, ItemData, MapName, ProjectileName, ServerIdentifier, ServerRegion, SlotInfo, StatusInfo } from "alclient"
 
 export type ItemInfo = {
     name: string
@@ -53,13 +53,49 @@ export type CharacterUIData = {
     ctype: CharacterType
     cx: CXData
     hp: number
+    id: string
+    going_x: number
+    going_y: number
     level: number
     max_hp: number
     max_mp: number
+    moving: boolean
     mp: number
     rip: boolean
     s: StatusInfo
+    skin: string
+    speed: number
+    target?: string
+    x: number
     xp: number
+    y: number
+}
+
+export type MonsterUIData = {
+    aa?: number
+    hp: number
+    id: string
+    going_x: number
+    going_y: number
+    max_hp: number
+    moving: boolean
+    s: StatusInfo
+    size?: number
+    skin: string
+    speed: number
+    target?: string
+    x: number
+    y: number
+}
+
+export type ProjectileUIData = {
+    going_x: number
+    going_y: number
+    pid: string
+    name: ProjectileName
+    isRay: boolean
+    x: number
+    y: number
 }
 
 export type InventoryData = {
@@ -76,7 +112,12 @@ export type ServerToClientEvents = {
     "data": (g: GData) => void
     "inventory": (id: string, data: InventoryData) => void
     "map": (id: string, data: MapData) => void
+    "monster": (monsterData: MonsterUIData) => void
+    "player": (id: string, data: CharacterUIData) => void
+    "projectile": (projectileData: ProjectileUIData) => void
     "removeBot": (id: string) => void
+    "removeSprite": (entityID: string) => void
+    "removeSprites": () => void
     "server": (id: string, data: ServerData) => void
 }
 
