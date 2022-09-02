@@ -1,5 +1,5 @@
 {
-    "name": "alui",
+    "name": "adventureland-gui",
     "version": "0.1.5",
     "description": "Basic UI for headless AdventureLand clients",
     "main": "build/alui/index.js",
@@ -18,6 +18,21 @@
         "update": "npm run updateReqs && npm run updateDevs",
         "prepare": "npm run clean && npm run build"
     },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/StormSurge95/ALUI.git"
+    },
+    "keywords": [
+        "adventureland",
+        "alui",
+        "adventure",
+        "land",
+        "node",
+        "typescript",
+        "gui",
+        "alclient",
+        "algui"
+    ],
     "author": "Storm Cassidy",
     "license": "GPL-3.0-or-later",
     "dependencies": {
