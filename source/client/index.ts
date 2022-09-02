@@ -1,23 +1,20 @@
 import * as SocketIO from "socket.io-client"
-import { CharacterUIData, ClientToServerEvents, InventoryData, MapData, ServerToClientEvents, UIData } from "../definitions/server"
+import { CharacterUIData, ClientToServerEvents, InventoryData, ServerToClientEvents, UIData } from "../definitions/server"
 import "./index.css"
 import { BankInfo, BankPackName, ConditionName, GData, ItemData, SlotInfo, SlotType, StatusInfo } from "alclient"
-import { PRECISION, SCALE_MODES, settings } from "pixi.js"
-import { TextureManager } from "./texture"
-import { MapManager } from "./map"
-import { SpriteManager } from "./sprite"
-import { ProjectileManager } from "./projectile"
+import { extensions, ExtensionType, Loader, PRECISION, SCALE_MODES, settings } from "pixi.js"
+import G from "./G.json"
+import { WebfontLoaderPlugin } from "pixi-webfont-loader"
 
 const invDisplayed = new Map<string, boolean>()
 let bankCache: BankInfo
 let currentPackNum = 0
 let currentTotalPacks = 0
-let tm: TextureManager
-let mm: MapManager
-let sm: SpriteManager
-let pm: ProjectileManager
-let G: GData = undefined
 
+// Setup web font loader
+extensions.add({ name: "webfont-loader", ref: WebfontLoaderPlugin, type: ExtensionType.Loader })
+
+// These settings make PIXI work well for pixel art based games
 settings.ROUND_PIXELS = true
 settings.SCALE_MODE = SCALE_MODES.NEAREST
 settings.PRECISION_FRAGMENT = PRECISION.LOW
@@ -28,25 +25,40 @@ const socket: SocketIO.Socket<ServerToClientEvents, ClientToServerEvents> = Sock
     transports: ["websocket"]
 })
 
+const top = document.createElement("div")
+top.setAttribute("class", "top")
 const UIContainer = document.createElement("div")
 UIContainer.setAttribute("class", "botUIContainer")
 UIContainer.id = "botUIContainer"
+const bottom = document.createElement("div")
+bottom.setAttribute("class", "bottom")
 const bankContainer = document.createElement("div")
 bankContainer.setAttribute("class", "bankUIContainer")
 bankContainer.id = "bankUIContainer"
-document.body.appendChild(UIContainer)
-document.body.appendChild(bankContainer)
+top.appendChild(UIContainer)
+document.body.appendChild(top)
+bottom.appendChild(bankContainer)
+document.body.appendChild(bottom)
 if (!bankCache) bankContainer.textContent = "NO BANK DATA"
 else displayBank(bankCache, bankContainer)
 
-socket.on("data", (g: GData): void => {
-    G = g
-    if (tm === undefined) {
-        tm = new TextureManager(g)
-        mm = new MapManager(tm, g.geometry)
-        sm = new SpriteManager(tm, g)
-        pm = new ProjectileManager(tm, g)
-    }
+Loader.shared.add({ name: "pixel", url: "./assets/m5x7.ttf" })
+
+for (const name in (G as unknown as GData).tilesets) {
+    const gTileset = (G as unknown as GData).tilesets[name]
+    const url = `.${gTileset.file}`
+    console.log(`loading ${url}...`)
+    Loader.shared.add({ name: url, url: url })
+}
+for (const name in (G as unknown as GData).sprites) {
+    const gSprites = (G as unknown as GData).sprites[name]
+    const url = `.${gSprites.file}`
+    console.log(`loading ${url}...`)
+    Loader.shared.add({ name: url, url: url })
+}
+
+Loader.shared.load().onComplete.add(() => {
+    //
 })
 
 socket.on("removeBot", (id: string): void => {
@@ -59,6 +71,58 @@ socket.on("clear", (): void => {
     cont.childNodes.forEach(node => {
         node.parentNode.removeChild(node)
     })
+})
+
+socket.on("player", (id: string, data: CharacterUIData): void => {
+    const levelEle = document.getElementById(`${id}_Level`)
+    levelEle.textContent = `Level: ${data.level}`
+
+    const hpBarEle = document.getElementById(`${id}_HP`)
+    hpBarEle.style.width = `${((data.hp / data.max_hp) * 100).toFixed(2)}%`
+
+    const hpBarInfoEle = document.getElementById(`${id}_HP_Info`)
+    hpBarInfoEle.textContent = `${data.hp.toLocaleString("en-US")} / ${data.max_hp.toLocaleString("en-US")} (${hpBarEle.style.width})`
+
+    const mpBarEle = document.getElementById(`${id}_MP`)
+    mpBarEle.style.width = `${((data.mp / data.max_mp) * 100).toFixed(2)}%`
+
+    const mpBarInfoEle = document.getElementById(`${id}_MP_Info`)
+    mpBarInfoEle.textContent = `${data.mp.toLocaleString("en-US")} / ${data.max_mp.toLocaleString("en-US")} (${mpBarEle.style.width})`
+
+    const xpBarEle = document.getElementById(`${id}_XP`)
+    const max_xp = (G as unknown as GData).levels[data.level]
+    xpBarEle.style.width = `${((data.xp / max_xp) * 100).toFixed(2)}%`
+
+    const xpBarInfoEle = document.getElementById(`${id}_XP_Info`)
+    xpBarInfoEle.textContent = `${data.xp.toLocaleString("en-US")} / ${max_xp.toLocaleString("en-US")} (${xpBarEle.style.width})`
+
+    const statusInfoEle = document.getElementById(`${id}_statuscontent`)
+    while (statusInfoEle.childElementCount > 0) {
+        statusInfoEle.removeChild(statusInfoEle.children[0])
+    }
+    displayConditions(data.s, statusInfoEle)
+})
+
+socket.on("inventory", (id: string, data: InventoryData): void => {
+    const goldEle = document.getElementById(`${id}_Gold`)
+    goldEle.textContent = data.gold.toLocaleString("en-US")
+
+    if (invDisplayed.get(id)) {
+        updateEquipment(data.equipment)
+        updateInventory(data.items)
+    } else {
+        const invButton = document.getElementById(`${id}_Inv`)
+        invButton.onclick = () => {
+            invButtonClick(id, data)
+        }
+    }
+})
+
+socket.on("bank", (data: BankInfo): void => {
+    bankCache = data
+    currentTotalPacks = Object.keys(data).length - 1
+    const cont = document.getElementById("bankUIContainer")
+    displayBank(data, cont)
 })
 
 socket.on("addBot", (id: string, data: UIData): void => {
@@ -76,16 +140,6 @@ socket.on("addBot", (id: string, data: UIData): void => {
     idDisplay.textContent = `Name: ${id}`
     idRow.appendChild(idDisplay)
     botWindow.appendChild(idRow)
-
-    // create class display
-    const classRow = document.createElement("div")
-    classRow.setAttribute("class", "botUIRow")
-    const classDisplay = document.createElement("div")
-    classDisplay.setAttribute("class", "textDisplay")
-    classDisplay.textContent = `Class: ${data.character.ctype}`
-    classRow.appendChild(classDisplay)
-    classDisplay.id = `${id}_Class`
-    botWindow.appendChild(classRow)
 
     // create level display
     const levelRow = document.createElement("div")
@@ -141,7 +195,7 @@ socket.on("addBot", (id: string, data: UIData): void => {
     const expBar = document.createElement("div")
     expBar.setAttribute("class", "xpbar")
     expBar.id = `${id}_XP`
-    const max_xp = G.levels[data.character.level]
+    const max_xp = (G as unknown as GData).levels[data.character.level]
     expBar.style.width = `${((data.character.xp / max_xp) * 100).toFixed(2)}%`
     const expText = document.createElement("div")
     expText.id = `${id}_XP_Info`
@@ -168,26 +222,6 @@ socket.on("addBot", (id: string, data: UIData): void => {
     goldValue.textContent = data.inventory.gold.toLocaleString("en-US")
     goldDisplay.appendChild(goldValue)
     botWindow.appendChild(goldRow)
-
-    // create map display
-    const mapRow = document.createElement("div")
-    mapRow.setAttribute("class", "botUIRow")
-    const mapDisplay = document.createElement("div")
-    mapDisplay.setAttribute("class", "textDisplay")
-    mapDisplay.id = `${id}_Map`
-    mapDisplay.textContent = `Map: { ${data.map.map}: ${data.map.x.toFixed(2)}, ${data.map.y.toFixed(2)} }`
-    mapRow.appendChild(mapDisplay)
-    botWindow.appendChild(mapRow)
-
-    // create server display
-    const serverRow = document.createElement("div")
-    serverRow.setAttribute("class", "botUIRow")
-    const serverDisplay = document.createElement("div")
-    serverDisplay.setAttribute("class", "textDisplay")
-    serverDisplay.id = `${id}_Server`
-    serverDisplay.textContent = `Server: ${data.server.region} ${data.server.ident}`
-    serverRow.appendChild(serverDisplay)
-    botWindow.appendChild(serverRow)
 
     // create inventory button
     const invRow = document.createElement("div")
@@ -233,66 +267,6 @@ socket.on("addBot", (id: string, data: UIData): void => {
     UIContainer.appendChild(botWindow)
 })
 
-socket.on("player", (id: string, data: CharacterUIData): void => {
-    const classEle = document.getElementById(`${id}_Class`)
-    classEle.textContent = `Class: ${data.ctype}`
-
-    const levelEle = document.getElementById(`${id}_Level`)
-    levelEle.textContent = `Level: ${data.level}`
-
-    const hpBarEle = document.getElementById(`${id}_HP`)
-    hpBarEle.style.width = `${((data.hp / data.max_hp) * 100).toFixed(2)}%`
-
-    const hpBarInfoEle = document.getElementById(`${id}_HP_Info`)
-    hpBarInfoEle.textContent = `${data.hp.toLocaleString("en-US")} / ${data.max_hp.toLocaleString("en-US")} (${hpBarEle.style.width})`
-
-    const mpBarEle = document.getElementById(`${id}_MP`)
-    mpBarEle.style.width = `${((data.mp / data.max_mp) * 100).toFixed(2)}%`
-
-    const mpBarInfoEle = document.getElementById(`${id}_MP_Info`)
-    mpBarInfoEle.textContent = `${data.mp.toLocaleString("en-US")} / ${data.max_mp.toLocaleString("en-US")} (${mpBarEle.style.width})`
-
-    const xpBarEle = document.getElementById(`${id}_XP`)
-    const max_xp = G.levels[data.level]
-    xpBarEle.style.width = `${((data.xp / max_xp) * 100).toFixed(2)}%`
-
-    const xpBarInfoEle = document.getElementById(`${id}_XP_Info`)
-    xpBarInfoEle.textContent = `${data.xp.toLocaleString("en-US")} / ${max_xp.toLocaleString("en-US")} (${xpBarEle.style.width})`
-
-    const statusInfoEle = document.getElementById(`${id}_statuscontent`)
-    while (statusInfoEle.childElementCount > 0) {
-        statusInfoEle.removeChild(statusInfoEle.children[0])
-    }
-    displayConditions(data.s, statusInfoEle)
-})
-
-socket.on("map", (id: string, data: MapData): void => {
-    const mapEle = document.getElementById(`${id}_Map`)
-    mapEle.textContent = `Map: { ${data.map}: ${data.x.toFixed(2)}, ${data.y.toFixed(2)} }`
-})
-
-socket.on("inventory", (id: string, data: InventoryData): void => {
-    const goldEle = document.getElementById(`${id}_Gold`)
-    goldEle.textContent = data.gold.toLocaleString("en-US")
-
-    if (invDisplayed.get(id)) {
-        updateEquipment(data.equipment)
-        updateInventory(data.items)
-    } else {
-        const invButton = document.getElementById(`${id}_Inv`)
-        invButton.onclick = () => {
-            invButtonClick(id, data)
-        }
-    }
-})
-
-socket.on("bank", (data: BankInfo): void => {
-    bankCache = data
-    currentTotalPacks = Object.keys(data).length - 1
-    const cont = document.getElementById("bankUIContainer")
-    displayBank(data, cont)
-})
-
 function displayConditions(data: StatusInfo, ele: HTMLElement): void {
     const statCont = document.createElement("div")
     statCont.setAttribute("class", "statContainer")
@@ -304,7 +278,7 @@ function displayConditions(data: StatusInfo, ele: HTMLElement): void {
     const numConditions = conditions.length
     let row: HTMLElement
     for (let i = 0; i < numConditions; i++) {
-        if (i % 6 == 0) {
+        if (i % 9 == 0) {
             row = document.createElement("div")
             statCont.appendChild(row)
         }
@@ -322,7 +296,7 @@ function displayConditions(data: StatusInfo, ele: HTMLElement): void {
         const pos = getConditionPos(cond)
         const src = getImgSrc(pos[0])
         img.src = src
-        const imgData = G.images[src.replace("./", "/")]
+        const imgData = (G as unknown as GData).images[src.replace("./", "/")]
         const width = imgData.width * 2
         const height = imgData.height * 2
         const offLeft = -(pos[1] * 40)
@@ -338,7 +312,7 @@ function displayConditions(data: StatusInfo, ele: HTMLElement): void {
         const namerow = document.createElement("div")
         namerow.setAttribute("class", "smalltextdisplay")
         try {
-            namerow.textContent = G.conditions[cond].name
+            namerow.textContent = (G as unknown as GData).conditions[cond].name
         } catch {
             namerow.textContent = cond as string
         }
@@ -377,12 +351,12 @@ function displayConditions(data: StatusInfo, ele: HTMLElement): void {
 
 function getConditionPos(cond: ConditionName): [string, number, number] {
     try {
-        const data = G.conditions[cond]
+        const data = (G as unknown as GData).conditions[cond]
         const skin = (data.skin == "condition_positive") ? "condition_good" : ((data.skin == "condition_negative") ? "condition_bad" : data.skin)
-        return G.positions[skin] as [string, number, number]
+        return (G as unknown as GData).positions[skin] as [string, number, number]
     } catch {
         console.log(`ConditionName: ${cond}`)
-        return G.positions["placeholder"] as [string, number, number]
+        return (G as unknown as GData).positions["placeholder"] as [string, number, number]
     }
 }
 
@@ -601,12 +575,12 @@ function displayEquipment(slots: SlotInfo, ele: HTMLElement): void {
 }
 
 function displayItem(item: ItemData, ele: HTMLElement, equip = false): void {
-    const itemSkin = G.items[item.name].skin
-    const itemPos = G.positions[itemSkin] as [string, number, number]
+    const itemSkin = (G as unknown as GData).items[item.name].skin
+    const itemPos = (G as unknown as GData).positions[itemSkin] as [string, number, number]
     const itemFile = getImgSrc(itemPos[0])
     const img = document.createElement("img")
     img.setAttribute("src", itemFile)
-    const imgData = G.images[itemFile.replace("./", "/")]
+    const imgData = (G as unknown as GData).images[itemFile.replace("./", "/")]
     const width = imgData.width * 2
     const height = imgData.height * 2
     const itemLeft = -(itemPos[1] * 40)
@@ -649,7 +623,7 @@ function displayItem(item: ItemData, ele: HTMLElement, equip = false): void {
 }
 
 function getName(item: ItemData): string {
-    const name = G.items[item.name].name
+    const name = (G as unknown as GData).items[item.name].name
     let fixedName = name
     if (item.p) {
         const pstr = item.p[0].toUpperCase() + item.p.substring(1)
