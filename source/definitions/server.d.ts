@@ -1,4 +1,4 @@
-import { BankInfo, CharacterType, CXData, GData, ItemData, MapName, ProjectileName, ServerIdentifier, ServerRegion, SlotInfo, StatusInfo } from "alclient"
+import { BankInfo, CXData, GData, ItemData, MapName, ProjectileName, SlotInfo, StatusInfo } from "alclient"
 
 export type ItemInfo = {
     name: string
@@ -41,16 +41,18 @@ export type UIData = {
     character: CharacterUIData
     inventory: InventoryData
     map: MapData
-    server: ServerData
 }
 
-export type ServerData = {
-    region: ServerRegion
-    ident: ServerIdentifier
+export type BotUIData = {
+    hp: number
+    id: string
+    level: number
+    max_hp: number
+    max_mp: number
+    mp: number
 }
 
 export type CharacterUIData = {
-    ctype: CharacterType
     cx: CXData
     hp: number
     id: string
@@ -118,7 +120,6 @@ export type ServerToClientEvents = {
     "removeBot": (id: string) => void
     "removeSprite": (entityID: string) => void
     "removeSprites": () => void
-    "server": (id: string, data: ServerData) => void
 }
 
 export type ClientToServerEvents = {

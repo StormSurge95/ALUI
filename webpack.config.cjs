@@ -21,7 +21,28 @@ module.exports = {
             title: "AdventureLand Bot Interface"
         }),
         new WebpackCdnPlugin({
-            modules: [],
+            modules: [
+                {
+                    name: "pixi.js",
+                    prodUrl: "https://cdnjs.cloudflare.com/ajax/libs/:name/:version/browser/pixi.min.js",
+                    var: "PIXI"
+                },
+                {
+                    name: "@pixi/layers",
+                    prodUrl: "https://unpkg.com/:name@:version/dist/pixi-layers.umd.js",
+                    var: "PIXI.display"
+                },
+                {
+                    name: "pixi-viewport",
+                    prodUrl: "https://www.unpkg.com/:name@:version/dist/viewport.min.js",
+                    var: "pixi_viewport"
+                },
+                {
+                    name: "pixi-webfont-loader",
+                    prodUrl: "https://www.unpkg.com/:name@:version/dist/pixi-webfont-loader.umd.min.js",
+                    var: "PIXI"
+                }
+            ],
             publicPath: "./"
         }),
         new HTMLInlineCSSWebpackPlugin({
@@ -64,7 +85,7 @@ module.exports = {
         open: true,
         headers: {
             "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH",
             "Access-Control-Allow-Headers": "X-Requested-With, content-type, Authorization"
         }
     }

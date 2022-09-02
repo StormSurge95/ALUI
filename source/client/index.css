@@ -51,15 +51,38 @@ img {
     margin-right: -5px;
 }
 
+.top {
+    display: flex;
+    justify-content: space-evenly;
+    flex-wrap: wrap;
+    background-color: black;
+    border: 0px solid black;
+    margin: 5px;
+    height: max-content;
+    width: 100%;
+}
+
 .botUIContainer {
     display: flex;
     justify-content: space-evenly;
     flex-wrap: wrap;
     background-color: black;
     border: 5px solid gray;
-    margin: 5vh;
+    margin: 0;
     height: max-content;
     width: auto;
+}
+
+.bottom {
+    display: flex;
+    justify-content: space-evenly;
+    align-content: center;
+    flex-wrap: wrap;
+    background-color: black;
+    border: 0px solid black;
+    margin: 5px;
+    height: max-content;
+    width: 100%;
 }
 
 .bankUIContainer {
@@ -69,7 +92,7 @@ img {
     flex-wrap: wrap;
     background-color: black;
     border: 5px solid gray;
-    margin: 5vh;
+    margin: 0;
     height: max-content;
 }
 
@@ -82,7 +105,7 @@ img {
 
 .packleft,
 .packright {
-    margin-top: 151px
+    margin-top: 146.5px
 }
 
 .packleft {
@@ -90,6 +113,7 @@ img {
     height: 92px;
     width: 60px;
     display: inline-block;
+    margin-left: 5px;
     background-color: black;
     border: 5px solid gray;
 }
@@ -99,6 +123,7 @@ img {
     height: 92px;
     width: 60px;
     display: inline-block;
+    margin-right: 5px;
     background-color: black;
     border: 5px solid gray;
 }
@@ -114,7 +139,7 @@ img {
     background-color: black;
     border: 5px solid gray;
     margin: 5px;
-    width: 20%;
+    width: 20vw;
     height: auto;
     display: inline-block;
 }
